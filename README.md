@@ -131,36 +131,6 @@ Use the template download link in the Import tab for a starter file.
 - PPT export forces light theme for cleaner slide capture/embedding.
 - Reveal-all click panel option shows all node details in panel view even if card fields are hidden.
 
-## GitHub Push Guide (When You Return to Office)
-
-This workspace currently may not be initialized as a Git repository. If needed, run:
-
-```bash
-git init
-git add .
-git commit -m "Initial OrgChart Builder commit"
-```
-
-Create a new empty GitHub repository, then connect and push:
-
-```bash
-git branch -M main
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git push -u origin main
-```
-
-If a remote already exists, verify it:
-
-```bash
-git remote -v
-```
-
-If needed, update it:
-
-```bash
-git remote set-url origin https://github.com/<your-user>/<your-repo>.git
-```
-
 ## Troubleshooting
 
 If local startup fails:
