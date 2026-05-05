@@ -3,7 +3,7 @@
  * Keeps undo history and notifies subscribers on every mutation.
  */
 
-import { createChart, createNode, getChartObjectives } from './model.js';
+import { createChart, createNode } from './model.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'orgchart_autosave';
@@ -170,39 +170,28 @@ export function addObjective(label, color = '#58a6ff') {
   const bg = hexToRgba(color, 0.25);
   const obj = { id, label, color, bg };
   _mutate(c => {
-    if (!Array.isArray(c.meta.objectives)) c.meta.objectives = getChartObjectives(c.meta);
-    c.meta.objectives.push(obj);
+    if (!c.meta.customObjectives) c.meta.customObjectives = [];
+    c.meta.customObjectives.push(obj);
   });
   return id;
 }
 
 export function updateObjective(id, patch) {
   _mutate(c => {
-    if (!Array.isArray(c.meta.objectives)) c.meta.objectives = getChartObjectives(c.meta);
-    const idx = c.meta.objectives.findIndex(o => o.id === id);
-    if (idx !== -1) c.meta.objectives[idx] = { ...c.meta.objectives[idx], ...patch };
+    if (!c.meta.customObjectives) return;
+    const idx = c.meta.customObjectives.findIndex(o => o.id === id);
+    if (idx !== -1) c.meta.customObjectives[idx] = { ...c.meta.customObjectives[idx], ...patch };
   });
 }
 
 export function deleteObjective(id) {
   _mutate(c => {
-    if (!Array.isArray(c.meta.objectives)) c.meta.objectives = getChartObjectives(c.meta);
-    if (c.meta.objectives.length <= 1) return;
-
-    const hadObjective = c.meta.objectives.some(o => o.id === id);
-    if (!hadObjective) return;
-
-    c.meta.objectives = c.meta.objectives.filter(o => o.id !== id);
-    const fallbackObjectiveId = c.meta.objectives[0]?.id || 'default';
+    if (!c.meta.customObjectives) return;
+    c.meta.customObjectives = c.meta.customObjectives.filter(o => o.id !== id);
     c.nodes.forEach(n => {
       n.objectives = (n.objectives || []).filter(oid => oid !== id);
-      if (!n.objectives.length) n.objectives = [fallbackObjectiveId];
+      if (!n.objectives.length) n.objectives = ['default'];
     });
-
-    if (_filterObjectiveIds.has(id)) {
-      _filterObjectiveIds.delete(id);
-      _applyObjectiveFilter();
-    }
   });
 }
 
@@ -275,30 +264,22 @@ function _normalizeChart(chart) {
   chart.meta.theme = chart.meta.theme ?? 'dark';
   chart.meta.orientation = chart.meta.orientation ?? 'top-down';
   chart.meta.connectorStyle = chart.meta.connectorStyle ?? 'orthogonal';
-  chart.meta.connectorDensity = chart.meta.connectorDensity ?? 'default';
   chart.meta.connectorColor = chart.meta.connectorColor ?? '';
-  chart.meta.revealAllOnClick = Boolean(chart.meta.revealAllOnClick);
   chart.meta.customObjectives = chart.meta.customObjectives ?? [];
-  chart.meta.objectives = getChartObjectives(chart.meta);
   chart.meta.fontFamily = chart.meta.fontFamily ?? 'system';
   chart.fieldVisibility = chart.fieldVisibility || {};
   if (typeof chart.fieldVisibility.objectives !== 'boolean') {
     chart.fieldVisibility.objectives = chart.fieldVisibility.badges ?? true;
   }
-  const objectiveIds = new Set((chart.meta.objectives || []).map(o => o.id));
-  const fallbackObjectiveId = chart.meta.objectives[0]?.id || 'default';
-
   chart.nodes = (chart.nodes || []).map(n => {
     const primary = n.tier || 'default';
     const secondary = Array.isArray(n.badges) ? n.badges : [];
     const legacyObjectives = Array.isArray(n.objectives) ? n.objectives : [];
     const merged = [...legacyObjectives, primary, ...secondary].filter(Boolean);
-    const deduped = [...new Set(merged)]
-      .filter(id => objectiveIds.has(id))
-      .slice(0, 2);
+    const deduped = [...new Set(merged)].slice(0, 2);
     return {
       ...n,
-      objectives: deduped.length ? deduped : [fallbackObjectiveId],
+      objectives: deduped.length ? deduped : ['default'],
     };
   });
   return chart;

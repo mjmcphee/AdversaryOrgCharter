@@ -318,10 +318,6 @@ select option { background: var(--surface); }
   background: none; border: none; color: var(--red);
   cursor: pointer; font-size: 0.8rem; padding: 0 4px;
 }
-.badge-delete:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
 
 .mini-badge {
   display: inline-block;

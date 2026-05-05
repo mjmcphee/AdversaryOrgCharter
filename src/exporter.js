@@ -45,7 +45,13 @@ export async function copyHtmlToClipboard(chart, opts = {}) {
  * Export as JSON (for save/reload).
  */
 export function exportJson(chart, filename = 'orgchart.json') {
-  const json = JSON.stringify(chart, null, 2);
+  const payload = {
+    format: 'orgchart-session',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    chart,
+  };
+  const json = JSON.stringify(payload, null, 2);
   triggerDownload(json, filename, 'application/json');
 }
 
@@ -54,7 +60,14 @@ export function exportJson(chart, filename = 'orgchart.json') {
  */
 export async function importJson(file) {
   const text = await file.text();
-  return JSON.parse(text);
+  const parsed = JSON.parse(text);
+
+  // Backward compatibility: older exports stored the chart directly.
+  if (parsed && typeof parsed === 'object' && parsed.format === 'orgchart-session' && parsed.chart) {
+    return parsed.chart;
+  }
+
+  return parsed;
 }
 
 function triggerDownload(content, filename, mimeType) {

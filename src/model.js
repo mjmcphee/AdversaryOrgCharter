@@ -2,9 +2,9 @@
  * Data model for OrgChart Builder
  *
  * A "chart" contains:
- *   - meta: title, subtitle, disclaimer, theme, orientation, connectorStyle, objectives
+ *   - meta: title, subtitle, disclaimer, theme, orientation, connectorStyle, customObjectives
  *   - fieldVisibility: which node fields are shown globally
- *   - objective catalog: stored in meta.objectives
+ *   - custom objectives: stored in meta.customObjectives
  *   - nodes: flat list of NodeRecord objects
  *
  * NodeRecord:
@@ -65,15 +65,6 @@ export const DEFAULT_OBJECTIVES = [
 // Keep DEFAULT_THEMES as alias for backward compatibility
 export const DEFAULT_THEMES = DEFAULT_OBJECTIVES;
 
-export function getChartObjectives(meta = {}) {
-  const objectives = Array.isArray(meta.objectives) && meta.objectives.length
-    ? meta.objectives
-    : [...DEFAULT_OBJECTIVES, ...(meta.customObjectives || [])];
-
-  if (!objectives.length) return DEFAULT_OBJECTIVES.map(o => ({ ...o }));
-  return objectives.map(o => ({ ...o }));
-}
-
 export function createNode(overrides = {}) {
   return {
     id: uuidv4(),
@@ -106,13 +97,10 @@ export function createChart(overrides = {}) {
       theme: 'dark', // 'dark' | 'light'
       orientation: 'top-down', // 'top-down' | 'left-right' | 'middle-out'
       connectorStyle: 'orthogonal', // 'orthogonal' | 'straight'
-      connectorDensity: 'default', // 'compact' | 'default' | 'spacious'
-      objectives: DEFAULT_OBJECTIVES.map(o => ({ ...o })), // Editable objective catalog
-      customObjectives: [], // Backward compatibility with older saved charts
+      customObjectives: [], // User-defined objectives beyond the defaults
       fontFamily: 'system', // Font choice id
       bgColor: '', // Custom canvas background color (overrides theme default)
-      connectorColor: '', // Custom link color (overrides theme default)
-      revealAllOnClick: false, // Show all node fields in click panel, even hidden ones
+      connectorColor: '', // Custom connector color (overrides theme default)
     },
     fieldVisibility: { ...DEFAULT_FIELD_VISIBILITY },
     nodes: [

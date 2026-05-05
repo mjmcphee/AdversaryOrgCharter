@@ -4,55 +4,38 @@ OrgChart Builder is an interactive editor for creating, importing, styling, and 
 
 It is designed for:
 
-- browser-based chart browsing
-- report/document embedding
+- Browser-based chart browsing
+- Report and document embedding
 - PowerPoint workflows (light export)
 
-## Current Feature Set
+## Current Features
 
 - Visual node editing from the left panel
-- Rich node fields:
-  - name (required)
-  - subheading
-  - associations
-  - focus/description
-  - operations (bulleted items)
-  - dates
-  - overlap/warning note
-  - detail panel notes
-  - wide card
-  - dashed border
-  - hidden node
-- Operations visibility:
-  - shown on node cards when enabled
-  - shown in click panel when enabled (or when reveal-all mode is enabled)
-- Objective catalog management:
-  - all objectives are editable (label and color)
-  - objectives can be deleted (with safe fallback reassignment)
-  - each node can have up to 2 objectives
-  - objective-based filtering
-- Display and layout controls:
-  - theme (dark/light)
-  - orientation (top-down, left-right, middle-out)
-  - connector style (orthogonal/straight)
-  - connector color
-  - connector density (compact/default/spacious)
-  - font selection
-  - custom background color
+- Rich node fields
+- Operations are visible on node cards (when enabled)
+- Operations are visible in the click panel (when enabled)
+- Editable objective catalog (rename, recolor, delete)
+- Objective-based filtering
+- Theme controls (dark and light)
+- Orientation controls (top-down, left-right, middle-out)
+- Connector controls:
+  - Style (orthogonal or straight)
+  - Color
+  - Density (compact, default, spacious)
+- Font selection
+- Background color selection
 - Field visibility toggles for node cards
-- Export behavior controls:
-  - reveal-all click panel option for exported/preview HTML
-- Import/export:
-  - JSON save/load
-  - standalone HTML export
-  - PPT-friendly light HTML export
-  - spreadsheet import (.xlsx, .xls, .csv)
-  - Google Sheets CSV URL import
-- Autosave to local storage
+- Reveal-all click panel option for preview/export HTML
+- JSON save and load for session resume
+- Standalone HTML export
+- PPT-friendly light HTML export
+- Spreadsheet import (.xlsx, .xls, .csv)
+- Google Sheets CSV URL import
+- Autosave to browser local storage
 
 ## Requirements
 
-- Node.js 18+ (20+ recommended)
+- Node.js 18+ (Node.js 20+ recommended)
 - npm
 
 ## Local Development
@@ -63,7 +46,7 @@ Install dependencies:
 npm install
 ```
 
-Start dev server:
+Run the development server:
 
 ```bash
 npm run dev
@@ -73,25 +56,39 @@ Open:
 
 - <http://localhost:5173>
 
-Build production bundle:
+Build production assets:
 
 ```bash
 npm run build
 ```
 
-Preview production bundle:
+Preview production build:
 
 ```bash
 npm run preview
 ```
 
-Build output:
+Build output directory:
 
 - dist/
 
-## Import Format (Spreadsheet)
+## Resume Editing From JSON
 
-Supported columns are case-insensitive.
+Use this workflow to pause and resume editing sessions:
+
+1. Click Save to export your chart as JSON.
+2. Later, open the app and click Open.
+3. Select your exported JSON file.
+4. Continue editing from the restored state.
+
+Notes:
+
+- New JSON exports include session metadata and chart content.
+- Older chart-only JSON files are still supported.
+
+## Spreadsheet Import Format
+
+Supported columns are case-insensitive:
 
 - id (optional)
 - parent_id (optional for root)
@@ -128,8 +125,33 @@ Use the template download link in the Import tab for a starter file.
 ## Export Notes
 
 - HTML export produces a standalone, shareable HTML file.
-- PPT export forces light theme for cleaner slide capture/embedding.
-- Reveal-all click panel option shows all node details in panel view even if card fields are hidden.
+- PPT export forces light theme for cleaner slide capture or embedding.
+- Reveal-all click panel shows all node details in panel view even if card fields are hidden.
+
+## GitHub Push Guide
+
+If this folder is not yet a Git repository, initialize and commit:
+
+```bash
+git init
+git add .
+git commit -m "Initial OrgChart Builder commit"
+```
+
+Create an empty repository on GitHub, then connect and push:
+
+```bash
+git branch -M main
+git remote add origin https://github.com/<your-user>/<your-repo>.git
+git push -u origin main
+```
+
+If a remote already exists, verify and update as needed:
+
+```bash
+git remote -v
+git remote set-url origin https://github.com/<your-user>/<your-repo>.git
+```
 
 ## Troubleshooting
 
@@ -148,7 +170,7 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-1. Retry build/dev:
+1. Retry build and dev:
 
 ```bash
 npm run build

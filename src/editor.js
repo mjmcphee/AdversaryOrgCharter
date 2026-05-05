@@ -12,7 +12,7 @@ import {
 } from './store.js';
 import { exportHtml, exportJson, importJson } from './exporter.js';
 import { parseSpreadsheetFile, parseCsvText, generateTemplateBlob } from './importer.js';
-import { DEFAULT_FONTS, getChartObjectives } from './model.js';
+import { DEFAULT_OBJECTIVES, DEFAULT_FONTS } from './model.js';
 
 let _activeNodeId = null;
 
@@ -87,13 +87,6 @@ function buildEditorHtml() {
         <option value="straight">Straight</option>
       </select>
     </label>
-    <label>Connector Density
-      <select id="meta-connector-density">
-        <option value="compact">Compact</option>
-        <option value="default">Default</option>
-        <option value="spacious">Spacious</option>
-      </select>
-    </label>
     <div class="bg-color-row">
       <label class="bg-color-label">Link Color
         <input type="color" id="meta-connector-color" value="#30363d" />
@@ -118,13 +111,6 @@ function buildEditorHtml() {
     <p class="hint">Objectives catalog (all nodes can choose up to 2)</p>
     <button id="btn-add-objective">+ New Objective</button>
     <div id="objective-list"></div>
-
-    <hr />
-    <label class="toggle-row">
-      <input type="checkbox" id="meta-reveal-all-on-click" />
-      Reveal all node details on click in exported HTML
-    </label>
-    <p class="hint">Applies to the preview/export node detail panel only; node card visibility toggles are unchanged.</p>
 
     <p class="hint" style="margin-top:6px;">Filter chart by objective</p>
     <div id="objective-filter-bar"></div>
@@ -173,7 +159,6 @@ function refreshEditor(container) {
   setVal(container, '#meta-theme', chart.meta.theme);
   setVal(container, '#meta-orientation', chart.meta.orientation || 'top-down');
   setVal(container, '#meta-connector-style', chart.meta.connectorStyle || 'orthogonal');
-  setVal(container, '#meta-connector-density', chart.meta.connectorDensity || 'default');
 
   // Sync background color picker
   const bgColorInput = container.querySelector('#meta-bg-color');
@@ -182,14 +167,12 @@ function refreshEditor(container) {
     bgColorInput.value = chart.meta.bgColor || (isDark ? '#0d1117' : '#f6f8fa');
   }
 
+  // Sync connector color picker
   const connectorColorInput = container.querySelector('#meta-connector-color');
   if (connectorColorInput) {
     const isDark = (chart.meta.theme ?? 'dark') !== 'light';
     connectorColorInput.value = chart.meta.connectorColor || (isDark ? '#30363d' : '#d0d7de');
   }
-
-  const revealAllOnClick = container.querySelector('#meta-reveal-all-on-click');
-  if (revealAllOnClick) revealAllOnClick.checked = Boolean(chart.meta.revealAllOnClick);
 
   renderFontOptions(container, chart);
   renderFieldToggles(container, chart);
@@ -241,32 +224,24 @@ function renderFieldToggles(container, chart) {
 }
 
 function getAllObjectives(chart) {
-  return getChartObjectives(chart.meta);
+  return [...DEFAULT_OBJECTIVES, ...(chart.meta.customObjectives || [])];
 }
 
 function renderObjectiveList(container, chart) {
   const el = container.querySelector('#objective-list');
   if (!el) return;
-  const objectives = getAllObjectives(chart);
-  const canDelete = objectives.length > 1;
-  el.innerHTML = objectives.map(obj => `
+  const customObjectives = chart.meta.customObjectives || [];
+  el.innerHTML = customObjectives.map(obj => `
     <div class="badge-item" data-objective-id="${obj.id}">
       <span class="mini-badge" style="background:${obj.bg};color:${obj.color};">${escHtml(obj.label)}</span>
       <input class="objective-label-input badge-label-input" type="text" value="${escAttr(obj.label)}" data-id="${obj.id}" />
       <input class="objective-color-input badge-color-input" type="color" value="${obj.color}" data-id="${obj.id}" title="Text color" />
-      <button class="objective-delete badge-delete" data-id="${obj.id}" title="Delete objective" ${canDelete ? '' : 'disabled'}>✕</button>
+      <button class="objective-delete badge-delete" data-id="${obj.id}" title="Delete objective">✕</button>
     </div>
   `).join('');
 
   el.querySelectorAll('.objective-label-input').forEach(input => {
-    input.addEventListener('change', () => {
-      const label = input.value.trim();
-      if (!label) {
-        input.value = input.defaultValue;
-        return;
-      }
-      updateObjective(input.dataset.id, { label });
-    });
+    input.addEventListener('change', () => updateObjective(input.dataset.id, { label: input.value }));
   });
   el.querySelectorAll('.objective-color-input').forEach(input => {
     input.addEventListener('change', () => {
@@ -275,12 +250,7 @@ function renderObjectiveList(container, chart) {
     });
   });
   el.querySelectorAll('.objective-delete').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.disabled) return;
-      if (confirm('Delete this objective from the catalog? Nodes using it will be reassigned.')) {
-        deleteObjective(btn.dataset.id);
-      }
-    });
+    btn.addEventListener('click', () => deleteObjective(btn.dataset.id));
   });
 }
 
@@ -411,7 +381,6 @@ function renderNodeEditor(container, node, chart) {
     const ops = el.querySelector('#ne-ops').value.split('\n').map(s => s.trim()).filter(Boolean);
     const newParentId = el.querySelector('#ne-parent').value || null;
     const selected = [...el.querySelectorAll('input[data-objective]:checked')].map(i => i.dataset.objective).slice(0, 2);
-    const fallbackObjectiveId = allObjectives[0]?.id || 'default';
     updateNode(node.id, {
       name: el.querySelector('#ne-name').value,
       subheading: el.querySelector('#ne-subheading').value,
@@ -419,7 +388,7 @@ function renderNodeEditor(container, node, chart) {
       focus: el.querySelector('#ne-focus').value,
       ops,
       dates: el.querySelector('#ne-dates').value,
-      objectives: selected.length ? selected : [fallbackObjectiveId],
+      objectives: selected.length ? selected : ['default'],
       overlapNote: el.querySelector('#ne-overlap').value,
       notes: el.querySelector('#ne-notes').value,
       wide: el.querySelector('#ne-wide').checked,
@@ -463,14 +432,12 @@ function bindEditorEvents(container) {
   container.querySelector('#meta-theme')?.addEventListener('change', e => updateMeta({ theme: e.target.value }));
   container.querySelector('#meta-orientation')?.addEventListener('change', e => updateMeta({ orientation: e.target.value }));
   container.querySelector('#meta-connector-style')?.addEventListener('change', e => updateMeta({ connectorStyle: e.target.value }));
-  container.querySelector('#meta-connector-density')?.addEventListener('change', e => updateMeta({ connectorDensity: e.target.value }));
   container.querySelector('#meta-font-family')?.addEventListener('change', e => updateMeta({ fontFamily: e.target.value }));
 
   container.querySelector('#meta-bg-color')?.addEventListener('input', e => updateMeta({ bgColor: e.target.value }));
   container.querySelector('#btn-reset-bg-color')?.addEventListener('click', () => updateMeta({ bgColor: '' }));
   container.querySelector('#meta-connector-color')?.addEventListener('input', e => updateMeta({ connectorColor: e.target.value }));
   container.querySelector('#btn-reset-connector-color')?.addEventListener('click', () => updateMeta({ connectorColor: '' }));
-  container.querySelector('#meta-reveal-all-on-click')?.addEventListener('change', e => updateMeta({ revealAllOnClick: e.target.checked }));
 
   container.querySelector('#btn-undo')?.addEventListener('click', undo);
   container.querySelector('#btn-redo')?.addEventListener('click', redo);
@@ -484,8 +451,12 @@ function bindEditorEvents(container) {
     inp.accept = '.json';
     inp.addEventListener('change', async () => {
       if (!inp.files[0]) return;
-      const chart = await importJson(inp.files[0]);
-      loadChart(chart);
+      try {
+        const chart = await importJson(inp.files[0]);
+        loadChart(chart);
+      } catch (err) {
+        alert(`Unable to import JSON file. ${err?.message || 'Please verify the file format.'}`);
+      }
     });
     inp.click();
   });
@@ -562,7 +533,7 @@ function bindEditorEvents(container) {
   });
 }
 
-function mergeObjectives(existing, incoming) {
+function mergeCustomObjectives(existing, incoming) {
   const merged = [...(existing || [])];
   const byId = new Map(merged.map(o => [o.id, o]));
   const byLabel = new Map(merged.map(o => [o.label.toLowerCase(), o]));
@@ -588,11 +559,9 @@ function mergeObjectives(existing, incoming) {
 }
 
 function normalizeNodeObjectives(nodes, remap = new Map()) {
-  const chart = getChart();
-  const fallbackObjectiveId = getAllObjectives(chart)[0]?.id || 'default';
   return (nodes || []).map(n => {
     const objectives = [...new Set((n.objectives || []).map(id => remap.get(id) || id))].slice(0, 2);
-    return { ...n, objectives: objectives.length ? objectives : [fallbackObjectiveId] };
+    return { ...n, objectives: objectives.length ? objectives : ['default'] };
   });
 }
 
@@ -608,20 +577,20 @@ async function handleImport(file, container) {
       `OK = Replace nodes\nCancel = Merge/append nodes`
     );
 
-    const { merged, remap } = mergeObjectives(getAllObjectives(chart), objectives || []);
+    const { merged, remap } = mergeCustomObjectives(chart.meta.customObjectives || [], objectives || []);
     const normalizedIncoming = normalizeNodeObjectives(nodes, remap);
 
     if (choice) {
       loadChart({
         ...chart,
         nodes: normalizedIncoming,
-        meta: { ...chart.meta, objectives: merged },
+        meta: { ...chart.meta, customObjectives: merged },
       });
     } else {
       loadChart({
         ...chart,
         nodes: [...chart.nodes, ...normalizedIncoming],
-        meta: { ...chart.meta, objectives: merged },
+        meta: { ...chart.meta, customObjectives: merged },
       });
     }
 
@@ -643,11 +612,11 @@ async function handleGSheetsImport(url, container) {
     const text = await resp.text();
     const { nodes, objectives } = parseCsvText(text);
     const chart = getChart();
-    const { merged, remap } = mergeObjectives(getAllObjectives(chart), objectives || []);
+    const { merged, remap } = mergeCustomObjectives(chart.meta.customObjectives || [], objectives || []);
     loadChart({
       ...chart,
       nodes: normalizeNodeObjectives(nodes, remap),
-      meta: { ...chart.meta, objectives: merged },
+      meta: { ...chart.meta, customObjectives: merged },
     });
     statusEl.textContent = `✔ Imported ${nodes.length} nodes from Google Sheets.`;
     statusEl.className = 'import-status success';
